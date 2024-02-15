@@ -231,21 +231,26 @@ if __name__ == '__main__':
 
     # print(f'thresh_hand = {thresh_hand}')
     # print(f'thnres_obj = {thresh_obj}')
+    import pyk4a
 
-    webcam_num = args.webcam_num
-    # Set up webcam or get image directories
-    if webcam_num >= 0 :
-      cap = cv2.VideoCapture(webcam_num)
-      num_images = 0
-    else:
-      print(f'image dir = {args.image_dir}')
-      print(f'save dir = {args.save_dir}')
-      imglist = os.listdir(args.image_dir)
-      num_images = len(imglist)
+    k4a_left = pyk4a.PyK4A(device_id=0)# 256121012)
+    k4a_left.start()
 
-    print('Loaded Photo: {} images.'.format(num_images))
+    # webcam_num = args.webcam_num
+    # # Set up webcam or get image directories
+    # if webcam_num >= 0 :
+    #   cap = cv2.VideoCapture(webcam_num)
+    #   num_images = 0
+    # else:
+    #   print(f'image dir = {args.image_dir}')
+    #   print(f'save dir = {args.save_dir}')
+    #   imglist = os.listdir(args.image_dir)
+    #   num_images = len(imglist)
 
+    # print('Loaded Photo: {} images.'.format(num_images))
 
+    num_images = 0
+    webcam_num = 0
     while (num_images >= 0):
         total_tic = time.time()
         if webcam_num == -1:
@@ -253,14 +258,17 @@ if __name__ == '__main__':
 
         # Get image from the webcam
         if webcam_num >= 0:
-          if not cap.isOpened():
-            raise RuntimeError("Webcam could not open. Please check connection.")
-          ret, frame = cap.read()
-          im_in = np.array(frame)
+          # if not cap.isOpened():
+          #   raise RuntimeError("Webcam could not open. Please check connection.")
+          # ret, frame = cap.read()
+          # im_in = np.array(frame)
+          frame = k4a_left.get_capture().color
+          frame = frame[:, :, :3]
+          im_in = frame
         # Load the demo image
-        else:
-          im_file = os.path.join(args.image_dir, imglist[num_images])
-          im_in = cv2.imread(im_file)
+        # else:
+        #   im_file = os.path.join(args.image_dir, imglist[num_images])
+        #   im_in = cv2.imread(im_file)
         # bgr
         im = im_in
 
@@ -340,6 +348,7 @@ if __name__ == '__main__':
         det_toc = time.time()
         detect_time = det_toc - det_tic
         misc_tic = time.time()
+        print(im.dtype, im.shape)
         if vis:
             im2show = np.copy(im)
         obj_dets, hand_dets = None, None
@@ -371,31 +380,26 @@ if __name__ == '__main__':
         if vis:
           # visualization
           im2show = vis_detections_filtered_objects_PIL(im2show, obj_dets, hand_dets, thresh_hand, thresh_obj)
+          im2show = np.array(im2show)
 
         misc_toc = time.time()
         nms_time = misc_toc - misc_tic
 
-        if webcam_num == -1:
-            sys.stdout.write('im_detect: {:d}/{:d} {:.3f}s {:.3f}s   \r' \
-                            .format(num_images + 1, len(imglist), detect_time, nms_time))
-            sys.stdout.flush()
+        # if webcam_num == -1:
+        #     sys.stdout.write('im_detect: {:d}/{:d} {:.3f}s {:.3f}s   \r' \
+        #                     .format(num_images + 1, len(imglist), detect_time, nms_time))
+        #     sys.stdout.flush()
 
-        if vis and webcam_num == -1:
-            
-            folder_name = args.save_dir
-            os.makedirs(folder_name, exist_ok=True)
-            result_path = os.path.join(folder_name, imglist[num_images][:-4] + "_det.png")
-            im2show.save(result_path)
-        else:
-            im2showRGB = cv2.cvtColor(im2show, cv2.COLOR_BGR2RGB)
-            cv2.imshow("frame", im2showRGB)
-            total_toc = time.time()
-            total_time = total_toc - total_tic
-            frame_rate = 1 / total_time
-            print('Frame rate:', frame_rate)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+        im2showRGB = cv2.cvtColor(im2show, cv2.COLOR_BGR2RGB)
+        cv2.imshow("frame", im2showRGB)
+        total_toc = time.time()
+        total_time = total_toc - total_tic
+        frame_rate = 1 / total_time
+        print('Frame rate:', frame_rate)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
               
     if webcam_num >= 0:
-        cap.release()
+        # cap.release()
+        k4a_left.close()
         cv2.destroyAllWindows()
